@@ -11,20 +11,28 @@
                 'NOMINMAX',
             ],
             'include_dirs': [
-                'include',
+                '.',
             ],
             'direct_dependent_settings': {
                 'include_dirs': [
-                    'include',
+                    '.',
                 ],
                 # TODO ADD LIBRARIES FOR WINDOWS BUILDS
             },
             'sources': [
                 #Source files
                 'src/main.cpp',
-                'src/peloader.cpp',
-                "src/dummies.cpp',
+                
                 'src/peloader.h',
+                'src/peloader.cpp',
+                
+                'src/dummies.cpp',
+                
+                'src/hooking/hooking.h',
+                'src/hooking/hooking.cpp',
+                
+                'src/hooking/hooking_patterns.h',
+                'src/hooking/hooking_patterns.cpp'    
             ],
             
             'conditions': [
