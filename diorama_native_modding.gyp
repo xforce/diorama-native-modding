@@ -23,6 +23,7 @@
                 #Source files
                 'src/main.cpp',
                 'src/peloader.cpp',
+                "src/dummies.cpp',
                 'src/peloader.h',
             ],
             
