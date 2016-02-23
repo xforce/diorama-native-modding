@@ -32,7 +32,10 @@
                 'src/hooking/hooking.cpp',
                 
                 'src/hooking/hooking_patterns.h',
-                'src/hooking/hooking_patterns.cpp'    
+                'src/hooking/hooking_patterns.cpp',
+                 
+                'src/vector.h',
+                'src/matrix.h', 
             ],
             
             'conditions': [

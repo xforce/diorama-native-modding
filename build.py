@@ -32,7 +32,7 @@ def GetMSBuildPath():
         val=QueryValueEx(aKey, "MSBuildToolsPath")[0] + "MSBuild.exe"
         return val
     except EnvironmentError:
-        print "Unable to find msbuild"
+        print "Unable to find msbuild 14.0 (aka Visual Studio 2015)"
         return ""
 
 def execute(argv, env=os.environ):
@@ -47,29 +47,17 @@ def execute(argv, env=os.environ):
 def execute_stdout(argv, env=os.environ):
   return execute(argv, env)
 
-def RunTests(configuration):
-    if _platform == "win32":
-        var = execute_stdout(configuration + "/knet_tests.exe")
-        return var
-    else:
-        var = execute_stdout("out/" + configuration + "/knet_tests")
-        return var
-
 def RunMSBuild(configuration):
     msbuild = GetMSBuildPath()
     if msbuild == "":
         return
-    var = execute_stdout([msbuild, "knet.sln", "/t:Build", "/p:Configuration=" + configuration])
-    if(var == 0):
-        return RunTests(configuration)
+    var = execute_stdout([msbuild, "diorama_native_modding.sln", "/t:Build", "/p:Configuration=" + configuration])
     return var
 
 def RunMake(configuration):
     env = os.environ.copy()
     env['BUILDTYPE'] = configuration
     var = execute_stdout(["make","-C", "out", "-j" + str(multiprocessing.cpu_count())], env)
-    if(var == 0):
-        return RunTests(configuration)
     return var
 
 if _platform == "win32":
