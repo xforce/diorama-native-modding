@@ -50,4 +50,13 @@ namespace hooking
         helpers::put<uint8_t>(address, 0xE8);
         helpers::put<int>(address + 1, (intptr_t)func - (intptr_t)address - 5);
     }
+
+	template<typename T>
+	inline void nop(T address, size_t number)
+	{
+		DWORD oldProtect;
+		VirtualProtect((LPVOID)address, number, PAGE_EXECUTE_READWRITE, &oldProtect);
+		memset((void*)address, 0x90, number);
+		VirtualProtect((LPVOID)address, number, oldProtect, &oldProtect);
+	}
 }
