@@ -9,6 +9,7 @@
             'type': '<(diorama_native_modding_target_type)',
             'defines': [
                 'NOMINMAX',
+                '_ITERATOR_DEBUG_LEVEL=0',
             ],
             'include_dirs': [
                 '.',
