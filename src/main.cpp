@@ -4,12 +4,46 @@
 #include "hooking/hooking_patterns.h"
 #include "vector.h"
 #include "matrix.h"
+#include "event_handler.h"
 
 int32_t dio_NetworkingClient_Update_Call = 0;
 int32_t dio_ToServerPlayerStateEvent_ctor_Call = 0;
 
 namespace dio
 {
+    template <typename T>
+    struct mallocator {
+        using value_type = T;
+
+        mallocator() = default;
+        template <class U>
+        mallocator(const mallocator<U>&) {}
+
+        T* allocate(std::size_t n) 
+        {
+            hooking::Pattern pat_malloc_call("55 8B EC EB 1F");
+            auto memory = ((T*(__cdecl *) (size_t))(pat_malloc_call.Get(0).Address()))(n);
+            return memory;
+        }
+        void deallocate(T* ptr, std::size_t) 
+        {
+            hooking::Pattern pat_malloc_call("55 8B EC FF 75 08 E8 ? ? ? ? 59 5D C3 55 8B EC F6 45 08 01");
+            ((void(__cdecl *) (T*))(pat_malloc_call.Get(0).Address()))(ptr);
+        }
+    };
+
+    template <typename T, typename U>
+    inline bool operator == (const mallocator<T>&, const mallocator<U>&) {
+        return true;
+    }
+
+    template <typename T, typename U>
+    inline bool operator != (const mallocator<T>& a, const mallocator<U>& b) {
+        return !(a == b);
+    }
+
+    using string = std::basic_string<char, std::char_traits<char>, mallocator<char>>;
+
     enum EventIds : uint8_t
     {
         TO_SERVER_PLAYER_JOINED = 0,
@@ -39,6 +73,12 @@ namespace dio
             ZeroMemory(memory, size);
             return memory;
         }
+
+        void operator delete  (void* ptr)
+        {
+            hooking::Pattern pat_malloc_call("55 8B EC FF 75 08 E8 ? ? ? ? 59 5D C3 55 8B EC F6 45 08 01");
+            ((void(__cdecl *) (void*))(pat_malloc_call.Get(0).Address()))(ptr);
+        }
     };
 #pragma pack(push, 1)
     struct ToServerPlayerStateEvent : public Event
@@ -63,9 +103,9 @@ namespace dio
 #pragma pack(push, 1)
     struct ToServerChatEvent : public Event
     {
-        std::string text_;
+        string text_;
 
-        virtual ~ToServerChatEvent() = default;
+        virtual ~ToServerChatEvent() {};
         ToServerChatEvent()
         {
             hooking::Pattern pat("55 8B EC 6A FF 68 ? ? ? ? 64 A1 ? ? ? ? 50 83 EC 08 56 A1 ? ? ? ? 33 C5 50 8D 45 F4 64 A3 ? ? ? ? 8B F1 89 75 F0 89 75 EC C7 45 ? ? ? ? ? C6 46 04 05");
@@ -73,6 +113,17 @@ namespace dio
         }
     };
 #pragma pack(pop)
+
+
+    enum class ClientEvents : uint8_t
+    {
+        ChatMessage,
+    };
+
+    public_api::EventHandler<ClientEvents> eventHandler;
+
+    struct NetworkingClient;
+    NetworkingClient * activeClient = nullptr;
 
 #pragma pack(push, 1)
     struct NetworkingClient
@@ -85,7 +136,7 @@ namespace dio
         virtual void Function001() = 0;
         virtual void SendEventToServer(Event*) = 0;
 
-        void SendChatMessage(std::string message)
+        void SendChatMessage(string message)
         {
             auto chatEvent = new ToServerChatEvent();
             chatEvent->text_ = message;
@@ -102,16 +153,22 @@ namespace dio
         }
 
 #pragma warning(disable : 4100)
-        static int __thiscall ToServerChat(int this_, std::string text)
+        static ToServerChatEvent* __thiscall ToServerChatHook(int this_, string text)
         {
-            // &a2 = string content
-            //auto text = std::string((const char*)a2, length);
-            //__debugbreak();
-            return 0;
+            auto result = eventHandler.Call<string&>(ClientEvents::ChatMessage, text);
+            auto chatEvent = new ToServerChatEvent();
+            chatEvent->text_ = text;
+            if (result != public_api::EventHandler<ClientEvents>::CallResult::ALL_TRUE)
+            {
+                // This is a bad hack, as we abuse the fact that unknown eventId is ignored
+                chatEvent->eventId_ = (EventIds)255;
+            }
+            return chatEvent;
         }
 
         static int* __thiscall Update(dio::NetworkingClient* client, int a2)
         {
+            activeClient = client;
             math::Vector3f bpos;
             auto v12 = *(DWORD *)((char*)client + 96);
             if (v12)
@@ -137,7 +194,7 @@ namespace dio
 
                     *(math::Vector3f *)(v13 + 32) = pos;
                     //*(math::Vector3f *)(v13 + 44) = { 0.425204098f, -3.14000988f,0.000000000 };
-
+                    
                     //client->SendDestroySelectedBlock();
                     //client->SendChatMessage("Hey guys!!!");
                 }
@@ -147,6 +204,11 @@ namespace dio
         }
     };
 #pragma pack(pop)
+
+    NetworkingClient * GetActiveClient()
+    {
+        return activeClient;
+    }
 }
 
 int main()
@@ -171,8 +233,17 @@ int main()
     hooking::call(dio_NetworkingClient_Update_Remote_Address, &dio::NetworkingClient::Update);
     hooking::call(pat_dio_NetworkingClient_Update_Local.Get(0).Address(), &dio::NetworkingClient::Update);
 
-    //hooking::call(pat_malloc_call2.Get(0).Address(), &dio::NetworkingClient::ToServerChat);
+    hooking::call(pat_malloc_call2.Get(0).Address(), &dio::NetworkingClient::ToServerChatHook);
     //hooking::call(dio_ToServerPlayerStateEvent_ctor_Address, &dio::ToServerPlayerStateEvent::ctor);
+
+    dio::eventHandler.AddEvent(dio::ClientEvents::ChatMessage, nullptr, [](dio::string &message) {
+        auto client = dio::GetActiveClient();
+        if (client)
+        {
+            client->SendChatMessage("Yay I can intercept chat messages");
+        }
+        return false;
+    });
 
     peLoader.Run();
 }
