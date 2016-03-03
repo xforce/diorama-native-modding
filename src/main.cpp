@@ -115,10 +115,27 @@ namespace dio
     };
 #pragma pack(pop)
 
-
+    // Some of these events are basically the same as in the Lua API, but some are different
     enum class ClientEvents : uint8_t
     {
-        ChatMessage,
+        ChatMessageReceived,
+        ChatMessagePreSent,
+        OtherClientConnected,
+        OtherClientDisconnected,
+        KeyClicked,
+        Updated,
+        ApplicationShutdown,
+        SessionStarted,
+        SessionShutdownBegun,
+        SessionShutdownCompleted,
+        WindowFocusLost,
+    };
+
+    // Helper class not part of diorama perse, we should move this to some place 
+    // and make the other stuff and API to communicate with the game and have this the public API
+    class Player
+    {
+
     };
 
     public_api::EventHandler<ClientEvents> eventHandler;
@@ -155,7 +172,7 @@ namespace dio
 
         static ToServerChatEvent* __thiscall ToServerChatHook(int, string text)
         {
-            auto result = eventHandler.Call<string&>(ClientEvents::ChatMessage, text);
+            auto result = eventHandler.Call<string&>(ClientEvents::ChatMessagePreSent, text);
             auto chatEvent = new ToServerChatEvent();
             chatEvent->text_ = text;
             if (result != public_api::EventHandler<ClientEvents>::CallResult::ALL_TRUE)
@@ -236,7 +253,7 @@ int main()
     hooking::call(pat_malloc_call2.Get(0).Address(), &dio::NetworkingClient::ToServerChatHook);
     //hooking::call(dio_ToServerPlayerStateEvent_ctor_Address, &dio::ToServerPlayerStateEvent::ctor);
 
-    dio::eventHandler.AddEvent(dio::ClientEvents::ChatMessage, nullptr, [](dio::string &) {
+    dio::eventHandler.AddEvent(dio::ClientEvents::ChatMessagePreSent, nullptr, [](dio::string &) {
         auto client = dio::GetActiveClient();
         if (client)
         {
