@@ -86,8 +86,8 @@ namespace dio
         virtual ~ToServerPlayerStateEvent() {};
         ToServerPlayerStateEvent()
         {
-            hooking::Pattern pat("55 8B EC F3 0F 7E 45 ? 8B 45 10 66 0F D6 41 ?");
-            ((dio::ToServerPlayerStateEvent*(__thiscall *) (ToServerPlayerStateEvent*, __int64, int, __int64, int, __int64, int, char, char, int, char))(pat.Get(0).Address()))(this, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            hooking::Pattern pat("55 8B EC 6A FF 68 ? ? ? ? 64 A1 ? ? ? ? 50 83 EC 08 56 A1 ? ? ? ? 33 C5 50 8D 45 F4 64 A3 ? ? ? ? 8B F1 89 75 F0 89 75 EC C7 45 ? ? ? ? ? C6 46 04 03");
+            ((dio::ToServerPlayerStateEvent*(__thiscall *) (ToServerPlayerStateEvent*, __int64, int, __int64, int, __int64, int, char, char, int, char, string))(pat.Get(0).Address()))(this, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, string{});
         }
 
         math::Vector3 chunk_id_;
@@ -97,6 +97,7 @@ namespace dio
         bool was_right_mouse_clicked_;
         int block_id_;
         bool is_crouching_;
+        string sign_text_;
     };
 #pragma pack(pop)
 
@@ -152,8 +153,7 @@ namespace dio
             SendEventToServer(event);
         }
 
-#pragma warning(disable : 4100)
-        static ToServerChatEvent* __thiscall ToServerChatHook(int this_, string text)
+        static ToServerChatEvent* __thiscall ToServerChatHook(int, string text)
         {
             auto result = eventHandler.Call<string&>(ClientEvents::ChatMessage, text);
             auto chatEvent = new ToServerChatEvent();
@@ -218,9 +218,9 @@ int main()
 
     hooking::SetImageBase((uintptr_t)peLoader.GetImageBase());
     hooking::helpers::set_base((uintptr_t)peLoader.GetImageBase());
-    hooking::Pattern pat_dio_NetworkingClient_Update_Remote("E8 ? ? ? ? 8B 4E 10 8B 41 48");
-    hooking::Pattern pat_dio_NetworkingClient_Update_Local("E8 ? ? ? ? 85 FF 74 73");
-    hooking::Pattern pat_dio_ToServerPlayerStateEvent_ctor("E8 ? ? ? ? 8B 4E 10 50");
+    hooking::Pattern pat_dio_NetworkingClient_Update_Remote("E8 ? ? ? ? 8B ? 10 8B 41 48");
+    hooking::Pattern pat_dio_NetworkingClient_Update_Local("E8 ? ? ? ? 85 F6 0F 84 ? ? ? ? 80 7D 8B 00");
+    hooking::Pattern pat_dio_ToServerPlayerStateEvent_ctor("E8 ? ? ? ? C6 45 FC 03 8B 4F 10");
     hooking::Pattern pat_malloc_call("74 73 6A 38");
     hooking::Pattern pat_malloc_call2("E8 ? ? ? ? 8B 4D CC C6 45 FC 00");
     
@@ -236,7 +236,7 @@ int main()
     hooking::call(pat_malloc_call2.Get(0).Address(), &dio::NetworkingClient::ToServerChatHook);
     //hooking::call(dio_ToServerPlayerStateEvent_ctor_Address, &dio::ToServerPlayerStateEvent::ctor);
 
-    dio::eventHandler.AddEvent(dio::ClientEvents::ChatMessage, nullptr, [](dio::string &message) {
+    dio::eventHandler.AddEvent(dio::ClientEvents::ChatMessage, nullptr, [](dio::string &) {
         auto client = dio::GetActiveClient();
         if (client)
         {
