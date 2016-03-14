@@ -170,17 +170,13 @@ namespace dio
             SendEventToServer(event);
         }
 
-        static ToServerChatEvent* __thiscall ToServerChatHook(int, string text)
+        static void __fastcall ToServerChatHook(DWORD *eventId, int, int, int* functorObject)
         {
-            auto result = eventHandler.Call<string&>(ClientEvents::ChatMessagePreSent, text);
-            auto chatEvent = new ToServerChatEvent();
-            chatEvent->text_ = text;
-            if (result != public_api::EventHandler<ClientEvents>::CallResult::ALL_TRUE)
-            {
-                // This is a bad hack, as we abuse the fact that unknown eventId is ignored
-                chatEvent->eventId_ = (EventIds)255;
-            }
-            return chatEvent;
+            eventId = eventId;
+            functorObject = functorObject;
+            //auto result = eventHandler.Call<string&>(ClientEvents::ChatMessagePreSent, text);
+            //auto chatEvent = new ToServerChatEvent();
+            //chatEvent->text_ = text;
         }
 
         static int* __thiscall Update(dio::NetworkingClient* client, int a2)
@@ -240,6 +236,7 @@ int main()
     hooking::Pattern pat_dio_ToServerPlayerStateEvent_ctor("E8 ? ? ? ? C6 45 FC 03 8B 4F 10");
     hooking::Pattern pat_malloc_call("74 73 6A 38");
     hooking::Pattern pat_malloc_call2("E8 ? ? ? ? 8B 4D CC C6 45 FC 00");
+    hooking::Pattern pat_ModdingEventsPreSent("E8 ? ? ? ? 80 7D D3 00");
     
     auto dio_NetworkingClient_Update_Remote_Address = pat_dio_NetworkingClient_Update_Remote.Get(0).Address();
     dio_NetworkingClient_Update_Call = *(int32_t*)(dio_NetworkingClient_Update_Remote_Address + 1) + dio_NetworkingClient_Update_Remote_Address + 5;
@@ -250,7 +247,7 @@ int main()
     hooking::call(dio_NetworkingClient_Update_Remote_Address, &dio::NetworkingClient::Update);
     hooking::call(pat_dio_NetworkingClient_Update_Local.Get(0).Address(), &dio::NetworkingClient::Update);
 
-    hooking::call(pat_malloc_call2.Get(0).Address(), &dio::NetworkingClient::ToServerChatHook);
+    hooking::call(pat_ModdingEventsPreSent.Get(0).Address(), &dio::NetworkingClient::ToServerChatHook);
     //hooking::call(dio_ToServerPlayerStateEvent_ctor_Address, &dio::ToServerPlayerStateEvent::ctor);
 
     dio::eventHandler.AddEvent(dio::ClientEvents::ChatMessagePreSent, nullptr, [](dio::string &) {
