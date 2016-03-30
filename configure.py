@@ -382,7 +382,7 @@ output = {
 }
 
 host_arch = host_arch_win() if os.name == 'nt' else host_arch_cc()
-target_arch = 'x86' #options.dest_cpu or host_arch
+target_arch = options.dest_cpu or host_arch
 
 # ia32 is preferred by the build tools (GYP) over x86 even if we prefer the latter
 # the Makefile resets this to x86 afterward
