@@ -1,3 +1,5 @@
+NOTE: Currently not compatible with the public diorama version
+
 # Diorama Native Modding
 This is just a small side project of mine to add a C++ API to the Windows Version of Diorama http://robtheswan.com http://www.twitch.tv/robtheswan
 
